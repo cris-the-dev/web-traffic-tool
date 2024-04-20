@@ -19,8 +19,19 @@ public class ThreadHelper {
         try {
             Thread.sleep(millisecond);
         } catch (InterruptedException ex) {
-            log.error("Failed to perform sleep");
+            log.error("Failed to perform waitInMs");
             Thread.currentThread().interrupt();
         }
+    }
+
+    public static void setTimeout(Runnable runnable, long delayInMs) {
+        new Thread(() -> {
+            try {
+                waitInMs(delayInMs);
+                runnable.run();
+            } catch (Exception e) {
+                log.error("Failed to perform setTimeout");
+            }
+        }).start();
     }
 }

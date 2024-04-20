@@ -19,5 +19,6 @@ public interface SeleniumService {
     void clickByXPath(WebDriver driver, String xPath);
     boolean clickByXPath(WebDriver driver, String xPath, Duration timeout, Integer maxAttempts);
     void waitNumberOfWindowsToBe(WebDriver driver, Integer number, Duration timeout);
-    boolean waitForPageReady(WebDriver driver, Duration timeout, Integer maxAttempts);
+    boolean waitForPageReady(WebDriver driver, Duration timeout, Integer maxAttempts, Runnable onError);
+    boolean switchToFrame(WebDriver driver, String xPath, Duration timeout, Integer maxAttempts);
 }

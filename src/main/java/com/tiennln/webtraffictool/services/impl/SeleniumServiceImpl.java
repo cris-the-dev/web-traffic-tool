@@ -47,7 +47,7 @@ public class SeleniumServiceImpl implements SeleniumService {
         var options = new ChromeOptions();
         options.addArguments("--remote-allow-origins=*");
         options.setBrowserVersion(driverManagerCfg.getChromeVersion());
-        options.setPageLoadStrategy(PageLoadStrategy.NORMAL);
+        options.setPageLoadStrategy(PageLoadStrategy.EAGER);
         options.setCapability("proxy", proxy);
 
         // Create a map to store  preferences
@@ -110,7 +110,7 @@ public class SeleniumServiceImpl implements SeleniumService {
                 log.info("Start clickByXPath with xPath={} in {}", xPath, timeout);
                 var wait = new WebDriverWait(driver, timeout);
                 var element = wait.until(
-                        ExpectedConditions.visibilityOfElementLocated(By.xpath("(/html/div)[last()]")));
+                        ExpectedConditions.visibilityOfElementLocated(By.xpath(xPath)));
                 log.info("Found element by xPath={}", xPath);
                 // Should wait to keep ads to be shown
                 ThreadHelper.waitInMs(500);
@@ -118,15 +118,15 @@ public class SeleniumServiceImpl implements SeleniumService {
                 log.info("End clickByXPath with xPath={}", xPath);
                 isSuccess = true;
             } catch (TimeoutException ex) {
-                log.error("Caught timeout exception -> retry: {}", maxAttempts, ex);
-                driver.navigate().refresh();
-                ThreadHelper.waitInMs(500);
+                if (maxAttempts >= 0) {
+                    log.error("Caught timeout exception -> retry: {}", maxAttempts, ex);
+                    driver.navigate().refresh();
+                    ThreadHelper.waitInMs(500);
+                }
+            } catch (Exception ex) {
+                log.error("Caught exception", ex);
             }
-        } while (maxAttempts > 0 && !isSuccess);
-        if (!isSuccess) {
-            log.error("Reach maxAttempts {} -> quit driver", maxAttempts);
-            driver.quit();
-        }
+        } while (maxAttempts >= 0 && !isSuccess);
         return isSuccess;
     }
 
@@ -139,16 +139,37 @@ public class SeleniumServiceImpl implements SeleniumService {
     }
 
     @Override
-    public boolean waitForPageReady(WebDriver driver, Duration timeout, Integer maxAttempts) {
+    public boolean waitForPageReady(WebDriver driver, Duration timeout, Integer maxAttempts, Runnable onError) {
         boolean isSuccess = false;
         do {
             maxAttempts -= 1;
             try {
                 log.info("Start waitForPageReady in {}", timeout);
-                var wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+                log.info("Current url {}", driver.getCurrentUrl());
+                var wait = new WebDriverWait(driver, timeout);
                 wait.until(
                         webDriver -> ((JavascriptExecutor) webDriver).executeScript("return document.readyState").equals("complete"));
                 log.info("End waitForPageReady");
+                isSuccess = true;
+            } catch (TimeoutException ex) {
+                log.error("Caught timeout exception -> retry: {}", maxAttempts, ex);
+                onError.run();
+                ThreadHelper.waitInMs(500);
+            }
+        } while (maxAttempts >= 0 && !isSuccess);
+        return isSuccess;
+    }
+
+    @Override
+    public boolean switchToFrame(WebDriver driver, String xPath, Duration timeout, Integer maxAttempts) {
+        boolean isSuccess = false;
+        do {
+            maxAttempts -= 1;
+            try {
+                log.info("Start switchToFrame with {} in {}", xPath, timeout);
+                var wait = new WebDriverWait(driver, timeout);
+                wait.until(ExpectedConditions.frameToBeAvailableAndSwitchToIt(By.xpath(xPath)));
+                log.info("End switchToFrame");
                 isSuccess = true;
             } catch (TimeoutException ex) {
                 log.error("Caught timeout exception -> retry: {}", maxAttempts, ex);
@@ -156,10 +177,6 @@ public class SeleniumServiceImpl implements SeleniumService {
                 ThreadHelper.waitInMs(500);
             }
         } while (maxAttempts >= 0 && !isSuccess);
-        if (!isSuccess) {
-            log.error("Reach maxAttempts {} -> quit driver", maxAttempts);
-            driver.quit();
-        }
         return isSuccess;
     }
 }
