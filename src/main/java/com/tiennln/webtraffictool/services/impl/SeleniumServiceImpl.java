@@ -10,6 +10,7 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.PageLoadStrategy;
 import org.openqa.selenium.Proxy;
+import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
@@ -94,9 +95,9 @@ public class SeleniumServiceImpl implements SeleniumService {
     }
 
     @Override
-    public void clickByXPath(WebDriver driver, String xPath, Duration duration) {
-        log.info("Start clickByXPath with xPath={} in {}", xPath, duration);
-        var wait = new WebDriverWait(driver, duration);
+    public void clickByXPath(WebDriver driver, String xPath, Duration timeout) {
+        log.info("Start clickByXPath with xPath={} in {}", xPath, timeout);
+        var wait = new WebDriverWait(driver, timeout);
         var element = wait.until(
                 ExpectedConditions.visibilityOfElementLocated(By.xpath("(/html/div)[last()]")));
         log.info("Found element by xPath={}", xPath);
@@ -107,19 +108,24 @@ public class SeleniumServiceImpl implements SeleniumService {
     }
 
     @Override
-    public void waitNumberOfWindowsToBe(WebDriver driver, Integer number, Duration duration) {
-        log.info("Start waitNumberOfWindowsToBe with {} window(s) in {}", number, duration);
-        var wait = new WebDriverWait(driver, duration);
+    public void waitNumberOfWindowsToBe(WebDriver driver, Integer number, Duration timeout) {
+        log.info("Start waitNumberOfWindowsToBe with {} window(s) in {}", number, timeout);
+        var wait = new WebDriverWait(driver, timeout);
         wait.until(ExpectedConditions.numberOfWindowsToBe(number));
         log.info("End waitNumberOfWindowsToBe");
     }
 
     @Override
-    public void waitForPageReady(WebDriver driver, Duration duration) {
-        log.info("Start waitForPageReady in {}", duration);
-        var wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-        wait.until(
-                webDriver -> ((JavascriptExecutor) webDriver).executeScript("return document.readyState").equals("complete"));
-        log.info("End waitForPageReady");
+    public void waitForPageReady(WebDriver driver, Duration timeout) {
+        try {
+            log.info("Start waitForPageReady in {}", timeout);
+            var wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+            wait.until(
+                    webDriver -> ((JavascriptExecutor) webDriver).executeScript("return document.readyState").equals("complete"));
+            log.info("End waitForPageReady");
+        } catch (TimeoutException ex) {
+            log.error("Caught timeout exception -> quit driver", ex);
+            driver.quit();
+        }
     }
 }

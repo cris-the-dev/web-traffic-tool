@@ -51,8 +51,11 @@ public class WwProxyServiceImpl implements WwProxyService {
         try {
             var response = new ObjectMapper().readValue(badRequestEx.contentUTF8(), WwProxyModel.class);
             if (tooManyRequestErrorCodes.contains(response.getErrorCode())) {
-                log.info("Found too many request, wait for 60s");
-                ThreadHelper.waitInMs(60L * 1000);
+                log.info("Found too many request, wait for 1s");
+                // Since we have limit 300 request/second -> sleep 500ms only
+                ThreadHelper.waitInMs(500);
+            } else {
+                log.info("Found unexpected BadRequest");
             }
         } catch (JsonProcessingException ex) {
             log.error("Error when WwProxyService.processBadRequestException", ex);

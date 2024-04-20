@@ -17,7 +17,7 @@ public interface SeleniumService {
     void clickByClassName(WebDriver driver, String className);
     void clickByCss(WebDriver driver, String cssSelector);
     void clickByXPath(WebDriver driver, String xPath);
-    void clickByXPath(WebDriver driver, String xPath, Duration duration);
-    void waitNumberOfWindowsToBe(WebDriver driver, Integer number, Duration duration);
-    void waitForPageReady(WebDriver driver, Duration duration);
+    void clickByXPath(WebDriver driver, String xPath, Duration timeout);
+    void waitNumberOfWindowsToBe(WebDriver driver, Integer number, Duration timeout);
+    void waitForPageReady(WebDriver driver, Duration timeout);
 }
