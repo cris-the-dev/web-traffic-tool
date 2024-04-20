@@ -26,6 +26,8 @@ public class ProcessHandler {
         if (!waitResult) {
             return;
         }
+        // Should wait to keep impression
+        ThreadHelper.waitInMs(1000);
 
         // Get base window
         var baseWindow = driver.getWindowHandle();
@@ -54,7 +56,7 @@ public class ProcessHandler {
         }
 
         // Should wait to keep impression
-        ThreadHelper.waitInMs(1000);
+        ThreadHelper.waitInMs(2000);
 
         // Close
         driver.quit();
