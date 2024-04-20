@@ -1,9 +1,12 @@
 package com.tiennln.webtraffictool.handlers;
 
+import com.tiennln.webtraffictool.helpers.ThreadHelper;
 import com.tiennln.webtraffictool.services.SeleniumService;
 import lombok.AllArgsConstructor;
-import org.openqa.selenium.JavascriptExecutor;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
+
+import java.time.Duration;
 
 @Component
 @AllArgsConstructor
@@ -12,20 +15,39 @@ public class ProcessHandler {
     private SeleniumService seleniumService;
 
     public void start() {
+        // Get driver
         var driver = seleniumService.getDriver();
-        var executor = (JavascriptExecutor) driver;
 
+        // Open base url
         seleniumService.openBrowser(driver, "https://blast1995.com");
 
-//        seleniumService.scrollDown(executor);
-//        seleniumService.scrollDown(executor);
+        // Wait for page loaded
+        seleniumService.waitForPageReady(driver, Duration.ofSeconds(5));
 
-        try {
-            Thread.sleep(5000);
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
+        // Get base window
+        var baseWindow = driver.getWindowHandle();
+
+        // Click ads
+        seleniumService.clickByXPath(driver, "(/html/div)[last()]", Duration.ofSeconds(5));
+
+        // Wait for new tab opened
+        seleniumService.waitNumberOfWindowsToBe(driver, 2, Duration.ofSeconds(5));
+
+        // Switch to new window opened
+        for (String winHandle : driver.getWindowHandles()) {
+            if (!StringUtils.equals(baseWindow, winHandle)) {
+                driver.switchTo().window(winHandle);
+                break;
+            }
         }
 
-        seleniumService.clickByXPath(driver, "/html/body/div/div/div/span");
+        // Wait for page loaded
+        seleniumService.waitForPageReady(driver, Duration.ofSeconds(5));
+
+        // Should wait to keep impression
+        ThreadHelper.waitInMs(1000);
+
+        // Close
+        driver.quit();
     }
 }

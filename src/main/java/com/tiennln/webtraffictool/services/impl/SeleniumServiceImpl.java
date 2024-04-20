@@ -1,5 +1,6 @@
 package com.tiennln.webtraffictool.services.impl;
 
+import com.tiennln.webtraffictool.helpers.ThreadHelper;
 import com.tiennln.webtraffictool.services.ProxyService;
 import com.tiennln.webtraffictool.services.SeleniumService;
 import io.github.bonigarcia.wdm.WebDriverManager;
@@ -12,7 +13,11 @@ import org.openqa.selenium.Proxy;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
+import org.openqa.selenium.support.ui.ExpectedConditions;
+import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Service;
+
+import java.time.Duration;
 
 @Service
 @AllArgsConstructor
@@ -22,6 +27,8 @@ public class SeleniumServiceImpl implements SeleniumService {
     private ProxyService proxyService;
 
     public WebDriver getDriver() {
+        WebDriverManager.chromedriver().clearDriverCache().setup();
+
         var proxyServer = proxyService.getProxy();
 
         var proxy = new Proxy();
@@ -36,7 +43,6 @@ public class SeleniumServiceImpl implements SeleniumService {
         options.setPageLoadStrategy(PageLoadStrategy.NORMAL);
         options.setCapability("proxy", proxy);
 
-        WebDriverManager.chromedriver().clearDriverCache().setup();
         return new ChromeDriver(options);
     }
 
@@ -78,5 +84,35 @@ public class SeleniumServiceImpl implements SeleniumService {
                 log.error("clickByXPath failed", ex);
             }
         } while (!isSuccess);
+    }
+
+    @Override
+    public void clickByXPath(WebDriver driver, String xPath, Duration duration) {
+        log.info("Start clickByXPath with xPath={} in {}", xPath, duration);
+        var wait = new WebDriverWait(driver, duration);
+        var element = wait.until(
+                ExpectedConditions.visibilityOfElementLocated(By.xpath("(/html/div)[last()]")));
+        log.info("Found element by xPath={}", xPath);
+        // Should wait to keep ads to be shown
+        ThreadHelper.waitInMs(500);
+        element.click();
+        log.info("End clickByXPath with xPath={}", xPath);
+    }
+
+    @Override
+    public void waitNumberOfWindowsToBe(WebDriver driver, Integer number, Duration duration) {
+        log.info("Start waitNumberOfWindowsToBe with {} window(s) in {}", number, duration);
+        var wait = new WebDriverWait(driver, duration);
+        wait.until(ExpectedConditions.numberOfWindowsToBe(number));
+        log.info("End waitNumberOfWindowsToBe");
+    }
+
+    @Override
+    public void waitForPageReady(WebDriver driver, Duration duration) {
+        log.info("Start waitForPageReady in {}", duration);
+        var wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+        wait.until(
+                webDriver -> ((JavascriptExecutor) webDriver).executeScript("return document.readyState").equals("complete"));
+        log.info("End waitForPageReady");
     }
 }

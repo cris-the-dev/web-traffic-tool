@@ -1,6 +1,5 @@
 package com.tiennln.webtraffictool.services.impl;
 
-import com.tiennln.webtraffictool.clients.WwProxyClient;
 import com.tiennln.webtraffictool.services.ProxyService;
 import com.tiennln.webtraffictool.services.WwProxyService;
 import lombok.AllArgsConstructor;
