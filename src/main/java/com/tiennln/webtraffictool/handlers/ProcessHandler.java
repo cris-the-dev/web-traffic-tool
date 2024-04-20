@@ -22,13 +22,19 @@ public class ProcessHandler {
         seleniumService.openBrowser(driver, "https://blast1995.com");
 
         // Wait for page loaded
-        seleniumService.waitForPageReady(driver, Duration.ofSeconds(5));
+        var waitResult = seleniumService.waitForPageReady(driver, Duration.ofSeconds(5), 3);
+        if (!waitResult) {
+            return;
+        }
 
         // Get base window
         var baseWindow = driver.getWindowHandle();
 
         // Click ads
-        seleniumService.clickByXPath(driver, "(/html/div)[last()]", Duration.ofSeconds(5));
+        waitResult = seleniumService.clickByXPath(driver, "(/html/div)[last()]", Duration.ofSeconds(5), 3);
+        if (!waitResult) {
+            return;
+        }
 
         // Wait for new tab opened
         seleniumService.waitNumberOfWindowsToBe(driver, 2, Duration.ofSeconds(5));
@@ -42,7 +48,10 @@ public class ProcessHandler {
         }
 
         // Wait for page loaded
-        seleniumService.waitForPageReady(driver, Duration.ofSeconds(5));
+        waitResult = seleniumService.waitForPageReady(driver, Duration.ofSeconds(5), 3);
+        if (!waitResult) {
+            return;
+        }
 
         // Should wait to keep impression
         ThreadHelper.waitInMs(1000);

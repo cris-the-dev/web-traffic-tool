@@ -19,6 +19,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.HashMap;
 
 @Service
 @AllArgsConstructor
@@ -32,7 +33,7 @@ public class SeleniumServiceImpl implements SeleniumService {
         var driverManager = WebDriverManager.chromedriver();
         var driverManagerCfg = driverManager.config();
         driverManagerCfg.setCachePath("./driver");
-        driverManager.clearDriverCache().browserVersion("123").setup();
+        driverManager.browserVersion("123").setup();
 
         // Get proxy
         var proxyServer = proxyService.getProxy();
@@ -48,6 +49,12 @@ public class SeleniumServiceImpl implements SeleniumService {
         options.setBrowserVersion(driverManagerCfg.getChromeVersion());
         options.setPageLoadStrategy(PageLoadStrategy.NORMAL);
         options.setCapability("proxy", proxy);
+
+        // Create a map to store  preferences
+        var prefs = new HashMap<String, Object>();
+        // 1: allow, 2: block
+        prefs.put("profile.default_content_setting_values.notifications", 1);
+        options.setExperimentalOption("prefs", prefs);
 
         log.info("Setup with option {}", options);
 
@@ -95,16 +102,32 @@ public class SeleniumServiceImpl implements SeleniumService {
     }
 
     @Override
-    public void clickByXPath(WebDriver driver, String xPath, Duration timeout) {
-        log.info("Start clickByXPath with xPath={} in {}", xPath, timeout);
-        var wait = new WebDriverWait(driver, timeout);
-        var element = wait.until(
-                ExpectedConditions.visibilityOfElementLocated(By.xpath("(/html/div)[last()]")));
-        log.info("Found element by xPath={}", xPath);
-        // Should wait to keep ads to be shown
-        ThreadHelper.waitInMs(500);
-        element.click();
-        log.info("End clickByXPath with xPath={}", xPath);
+    public boolean clickByXPath(WebDriver driver, String xPath, Duration timeout, Integer maxAttempts) {
+        boolean isSuccess = false;
+        do {
+            maxAttempts -= 1;
+            try {
+                log.info("Start clickByXPath with xPath={} in {}", xPath, timeout);
+                var wait = new WebDriverWait(driver, timeout);
+                var element = wait.until(
+                        ExpectedConditions.visibilityOfElementLocated(By.xpath("(/html/div)[last()]")));
+                log.info("Found element by xPath={}", xPath);
+                // Should wait to keep ads to be shown
+                ThreadHelper.waitInMs(500);
+                element.click();
+                log.info("End clickByXPath with xPath={}", xPath);
+                isSuccess = true;
+            } catch (TimeoutException ex) {
+                log.error("Caught timeout exception -> retry: {}", maxAttempts, ex);
+                driver.navigate().refresh();
+                ThreadHelper.waitInMs(500);
+            }
+        } while (maxAttempts > 0 && !isSuccess);
+        if (!isSuccess) {
+            log.error("Reach maxAttempts {} -> quit driver", maxAttempts);
+            driver.quit();
+        }
+        return isSuccess;
     }
 
     @Override
@@ -116,16 +139,27 @@ public class SeleniumServiceImpl implements SeleniumService {
     }
 
     @Override
-    public void waitForPageReady(WebDriver driver, Duration timeout) {
-        try {
-            log.info("Start waitForPageReady in {}", timeout);
-            var wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-            wait.until(
-                    webDriver -> ((JavascriptExecutor) webDriver).executeScript("return document.readyState").equals("complete"));
-            log.info("End waitForPageReady");
-        } catch (TimeoutException ex) {
-            log.error("Caught timeout exception -> quit driver", ex);
+    public boolean waitForPageReady(WebDriver driver, Duration timeout, Integer maxAttempts) {
+        boolean isSuccess = false;
+        do {
+            maxAttempts -= 1;
+            try {
+                log.info("Start waitForPageReady in {}", timeout);
+                var wait = new WebDriverWait(driver, Duration.ofSeconds(10));
+                wait.until(
+                        webDriver -> ((JavascriptExecutor) webDriver).executeScript("return document.readyState").equals("complete"));
+                log.info("End waitForPageReady");
+                isSuccess = true;
+            } catch (TimeoutException ex) {
+                log.error("Caught timeout exception -> retry: {}", maxAttempts, ex);
+                driver.navigate().refresh();
+                ThreadHelper.waitInMs(500);
+            }
+        } while (maxAttempts >= 0 && !isSuccess);
+        if (!isSuccess) {
+            log.error("Reach maxAttempts {} -> quit driver", maxAttempts);
             driver.quit();
         }
+        return isSuccess;
     }
 }
