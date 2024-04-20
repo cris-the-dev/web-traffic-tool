@@ -27,21 +27,28 @@ public class SeleniumServiceImpl implements SeleniumService {
     private ProxyService proxyService;
 
     public WebDriver getDriver() {
-        WebDriverManager.chromedriver().clearDriverCache().setup();
+        // Download driver
+        var driverManager = WebDriverManager.chromedriver();
+        var driverManagerCfg = driverManager.config();
+        driverManagerCfg.setCachePath("./driver");
+        driverManager.clearDriverCache().browserVersion("123").setup();
 
+        // Get proxy
         var proxyServer = proxyService.getProxy();
 
+        // Set proxy
         var proxy = new Proxy();
         proxy.setHttpProxy(proxyServer);
         proxy.setSslProxy(proxyServer);
 
+        // Set options
         var options = new ChromeOptions();
         options.addArguments("--remote-allow-origins=*");
-        options.setCapability("browserName", "chrome");
-        options.setBrowserVersion("117.0.0");
-        options.setPlatformName("Mac OS X");
+        options.setBrowserVersion(driverManagerCfg.getChromeVersion());
         options.setPageLoadStrategy(PageLoadStrategy.NORMAL);
         options.setCapability("proxy", proxy);
+
+        log.info("Setup with option {}", options);
 
         return new ChromeDriver(options);
     }
