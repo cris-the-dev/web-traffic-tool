@@ -15,6 +15,6 @@ public class ProcessController {
 
     @PostMapping
     void process() {
-        handler.start();
+        new Thread(() -> handler.start()).start();
     }
 }

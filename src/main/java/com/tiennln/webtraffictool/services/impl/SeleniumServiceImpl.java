@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.Keys;
 import org.openqa.selenium.PageLoadStrategy;
 import org.openqa.selenium.Proxy;
 import org.openqa.selenium.TimeoutException;
@@ -19,6 +20,7 @@ import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Service;
 
 import java.time.Duration;
+import java.util.HashMap;
 
 @Service
 @AllArgsConstructor
@@ -32,7 +34,7 @@ public class SeleniumServiceImpl implements SeleniumService {
         var driverManager = WebDriverManager.chromedriver();
         var driverManagerCfg = driverManager.config();
         driverManagerCfg.setCachePath("./driver");
-        driverManager.clearDriverCache().browserVersion("123").setup();
+        driverManager.browserVersion("123").setup();
 
         // Get proxy
         var proxy = proxyService.getProxy();
@@ -41,8 +43,14 @@ public class SeleniumServiceImpl implements SeleniumService {
         var options = new ChromeOptions();
         options.addArguments("--remote-allow-origins=*");
         options.setBrowserVersion(driverManagerCfg.getChromeVersion());
-        options.setPageLoadStrategy(PageLoadStrategy.NORMAL);
+        options.setPageLoadStrategy(PageLoadStrategy.EAGER);
         options.setCapability("proxy", proxy);
+
+        // Create a map to store  preferences
+        var prefs = new HashMap<String, Object>();
+        // 1: allow, 2: block
+        prefs.put("profile.default_content_setting_values.notifications", 1);
+        options.setExperimentalOption("prefs", prefs);
 
         log.info("Setup with option {}", options);
 
@@ -90,16 +98,32 @@ public class SeleniumServiceImpl implements SeleniumService {
     }
 
     @Override
-    public void clickByXPath(WebDriver driver, String xPath, Duration timeout) {
-        log.info("Start clickByXPath with xPath={} in {}", xPath, timeout);
-        var wait = new WebDriverWait(driver, timeout);
-        var element = wait.until(
-                ExpectedConditions.visibilityOfElementLocated(By.xpath("(/html/div)[last()]")));
-        log.info("Found element by xPath={}", xPath);
-        // Should wait to keep ads to be shown
-        ThreadHelper.waitInMs(500);
-        element.click();
-        log.info("End clickByXPath with xPath={}", xPath);
+    public boolean clickByXPath(WebDriver driver, String xPath, Duration timeout, Integer numOfRetries) {
+        boolean isSuccess = false;
+        do {
+            numOfRetries -= 1;
+            try {
+                log.info("Start clickByXPath with xPath={} in {}", xPath, timeout);
+                var wait = new WebDriverWait(driver, timeout);
+                var element = wait.until(
+                        ExpectedConditions.visibilityOfElementLocated(By.xpath(xPath)));
+                log.info("Found element by xPath={}", xPath);
+                // Should wait to keep ads to be shown
+                ThreadHelper.waitInMs(500);
+                element.click();
+                log.info("End clickByXPath with xPath={}", xPath);
+                isSuccess = true;
+            } catch (TimeoutException ex) {
+                if (numOfRetries > 0) {
+                    log.error("Caught timeout exception when clickByXPath-> retry: {}", numOfRetries, ex);
+                    driver.navigate().refresh();
+                    ThreadHelper.waitInMs(500);
+                }
+            } catch (Exception ex) {
+                log.error("Caught exception when clickByXPath", ex);
+            }
+        } while (numOfRetries > 0 && !isSuccess);
+        return isSuccess;
     }
 
     @Override
@@ -111,16 +135,58 @@ public class SeleniumServiceImpl implements SeleniumService {
     }
 
     @Override
-    public void waitForPageReady(WebDriver driver, Duration timeout) {
-        try {
-            log.info("Start waitForPageReady in {}", timeout);
-            var wait = new WebDriverWait(driver, Duration.ofSeconds(10));
-            wait.until(
-                    webDriver -> ((JavascriptExecutor) webDriver).executeScript("return document.readyState").equals("complete"));
-            log.info("End waitForPageReady");
-        } catch (TimeoutException ex) {
-            log.error("Caught timeout exception -> quit driver", ex);
-            driver.quit();
-        }
+    public boolean waitForPageReady(WebDriver driver, Duration timeout, Integer numOfRetries, Runnable onError) {
+        boolean isSuccess = false;
+        do {
+            numOfRetries -= 1;
+            try {
+                log.info("Start waitForPageReady in {}", timeout);
+                log.info("Current url {}", driver.getCurrentUrl());
+                var wait = new WebDriverWait(driver, timeout);
+                wait.until(
+                        webDriver -> ((JavascriptExecutor) webDriver).executeScript("return document.readyState").equals("complete"));
+                log.info("End waitForPageReady");
+                isSuccess = true;
+            } catch (TimeoutException ex) {
+                log.error("Caught timeout exception when waitForPageReady -> retry: {}", numOfRetries, ex);
+                onError.run();
+                ThreadHelper.waitInMs(500);
+            } catch (Exception ex) {
+                log.error("Caught exception when waitForPageReady", ex);
+            }
+        } while (numOfRetries > 0 && !isSuccess);
+        return isSuccess;
+    }
+
+    @Override
+    public boolean switchToFrame(WebDriver driver, String xPath, Duration timeout, Integer numOfRetries) {
+        boolean isSuccess = false;
+        do {
+            numOfRetries -= 1;
+            try {
+                log.info("Start switchToFrame with {} in {}", xPath, timeout);
+                var wait = new WebDriverWait(driver, timeout);
+                wait.until(ExpectedConditions.frameToBeAvailableAndSwitchToIt(By.xpath(xPath)));
+                log.info("End switchToFrame");
+                isSuccess = true;
+            } catch (TimeoutException ex) {
+                log.error("Caught timeout exception when switchToFrame -> retry: {}", numOfRetries, ex);
+                driver.navigate().refresh();
+                ThreadHelper.waitInMs(500);
+            } catch (Exception ex) {
+                log.error("Caught exception when switchToFrame", ex);
+            }
+        } while (numOfRetries > 0 && !isSuccess);
+        return isSuccess;
+    }
+
+    @Override
+    public boolean search(WebDriver driver, String xPath, Duration timeout, String searchText) {
+        var wait = new WebDriverWait(driver, timeout);
+        var element = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(xPath)));
+        element.sendKeys(searchText);
+        ThreadHelper.waitInMs(100);
+        element.sendKeys(Keys.ENTER);
+        return true;
     }
 }
