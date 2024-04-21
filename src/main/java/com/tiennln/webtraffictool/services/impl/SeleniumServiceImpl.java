@@ -1,11 +1,13 @@
 package com.tiennln.webtraffictool.services.impl;
 
+import com.tiennln.webtraffictool.helpers.FileHelper;
 import com.tiennln.webtraffictool.helpers.ThreadHelper;
 import com.tiennln.webtraffictool.services.ProxyService;
 import com.tiennln.webtraffictool.services.SeleniumService;
 import io.github.bonigarcia.wdm.WebDriverManager;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
@@ -19,8 +21,14 @@ import org.openqa.selenium.support.ui.ExpectedConditions;
 import org.openqa.selenium.support.ui.WebDriverWait;
 import org.springframework.stereotype.Service;
 
+import java.io.File;
+import java.io.FileOutputStream;
+import java.nio.file.Files;
 import java.time.Duration;
 import java.util.HashMap;
+import java.util.List;
+import java.util.stream.Stream;
+import java.util.zip.ZipOutputStream;
 
 @Service
 @AllArgsConstructor
@@ -51,6 +59,17 @@ public class SeleniumServiceImpl implements SeleniumService {
         // 1: allow, 2: block
         prefs.put("profile.default_content_setting_values.notifications", 1);
         options.setExperimentalOption("prefs", prefs);
+
+        // Set bypass proxy file
+        var bypassProxyFile = getBypassProxyExtensionFile(
+                proxyService.getProxyHost(),
+                proxyService.getProxyPort(),
+                proxyService.getProxyUsername(),
+                proxyService.getProxyPassword()
+        );
+        if (bypassProxyFile != null) {
+            options.addExtensions(bypassProxyFile);
+        }
 
         log.info("Setup with option {}", options);
 
@@ -188,5 +207,76 @@ public class SeleniumServiceImpl implements SeleniumService {
         ThreadHelper.waitInMs(100);
         element.sendKeys(Keys.ENTER);
         return true;
+    }
+
+    private File getBypassProxyExtensionFile(String host, String port, String username, String password) {
+        if (Stream.of(host, port, username, password).anyMatch(StringUtils::isEmpty)) {
+            return null;
+        }
+        var manifestJson = """
+                {
+                  "version": "1.0.0",
+                  "manifest_version": 2,
+                  "name": "Chrome Proxy",
+                  "permissions": [
+                    "proxy",
+                    "tabs",
+                    "unlimitedStorage",
+                    "storage",
+                    "<all_urls>",
+                    "webRequest",
+                    "webRequestBlocking"
+                  ],
+                  "background": {
+                    "scripts": ["background.js"]
+                  },
+                  "minimum_chrome_version":"22.0.0"
+                }""".trim();
+
+        var backgroundJs = String.format("""
+                var config = {
+                    mode: "fixed_servers",
+                    rules: {
+                        singleProxy: {
+                            scheme: "http",
+                            host: "%s",
+                            port: parseInt(%s)
+                        },
+                        bypassList: ["localhost"]
+                    }
+                };
+                chrome.proxy.settings.set({value: config, scope: "regular"}, function() {});
+                function callbackFn(details) {
+                    return {
+                        authCredentials: {
+                            username: "%s",
+                            password: "%s"
+                        }
+                    };
+                }
+                chrome.webRequest.onAuthRequired.addListener(
+                    callbackFn,
+                    {urls: ["<all_urls>"]},
+                    ['blocking']
+                );
+                """.trim(), host, port, username, password);
+
+        try {
+            var fos = new FileOutputStream("proxy_auth_plugin.zip");
+            var zipOS = new ZipOutputStream(fos);
+
+            FileHelper.createFile("manifest.json", manifestJson);
+            FileHelper.createFile("background.js", backgroundJs);
+
+            var file = new File("proxy_auth_plugin.zip");
+            FileHelper.writeToZipFile("manifest.json", zipOS);
+            FileHelper.writeToZipFile("background.js", zipOS);
+            zipOS.close();
+            fos.close();
+            return file;
+        } catch (Exception ex) {
+            log.error("Caught error in getBypassProxyExtensionFile", ex);
+        }
+        return null;
     }
 }

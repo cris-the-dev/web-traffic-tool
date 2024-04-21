@@ -18,12 +18,31 @@ public class ProxyServiceImpl implements ProxyService {
 
     @Override
     public String getProxyUrl() {
-        var proxy = wwProxyService.getProxy();
-        return proxy;
+        return wwProxyService.getProxy();
     }
 
     @Override
     public Proxy getProxy() {
         return geoNodeService.getProxy();
+    }
+
+    @Override
+    public String getProxyPort() {
+        return geoNodeService.getProxyPort();
+    }
+
+    @Override
+    public String getProxyHost() {
+        return geoNodeService.getProxyHost();
+    }
+
+    @Override
+    public String getProxyUsername() {
+        return geoNodeService.getProxyUsername();
+    }
+
+    @Override
+    public String getProxyPassword() {
+        return geoNodeService.getProxyPassword();
     }
 }
