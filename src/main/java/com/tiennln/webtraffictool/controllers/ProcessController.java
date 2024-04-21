@@ -1,6 +1,5 @@
 package com.tiennln.webtraffictool.controllers;
 
-
 import com.tiennln.webtraffictool.handlers.ProcessHandler;
 import lombok.AllArgsConstructor;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -16,6 +15,6 @@ public class ProcessController {
 
     @PostMapping
     void process() {
-        handler.start();
+        new Thread(() -> handler.start()).start();
     }
 }
