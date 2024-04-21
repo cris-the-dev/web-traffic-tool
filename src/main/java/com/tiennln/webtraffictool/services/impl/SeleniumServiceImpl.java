@@ -8,6 +8,7 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.Keys;
 import org.openqa.selenium.PageLoadStrategy;
 import org.openqa.selenium.Proxy;
 import org.openqa.selenium.TimeoutException;
@@ -102,10 +103,10 @@ public class SeleniumServiceImpl implements SeleniumService {
     }
 
     @Override
-    public boolean clickByXPath(WebDriver driver, String xPath, Duration timeout, Integer maxAttempts) {
+    public boolean clickByXPath(WebDriver driver, String xPath, Duration timeout, Integer numOfRetries) {
         boolean isSuccess = false;
         do {
-            maxAttempts -= 1;
+            numOfRetries -= 1;
             try {
                 log.info("Start clickByXPath with xPath={} in {}", xPath, timeout);
                 var wait = new WebDriverWait(driver, timeout);
@@ -118,15 +119,15 @@ public class SeleniumServiceImpl implements SeleniumService {
                 log.info("End clickByXPath with xPath={}", xPath);
                 isSuccess = true;
             } catch (TimeoutException ex) {
-                if (maxAttempts >= 0) {
-                    log.error("Caught timeout exception -> retry: {}", maxAttempts, ex);
+                if (numOfRetries > 0) {
+                    log.error("Caught timeout exception when clickByXPath-> retry: {}", numOfRetries, ex);
                     driver.navigate().refresh();
                     ThreadHelper.waitInMs(500);
                 }
             } catch (Exception ex) {
-                log.error("Caught exception", ex);
+                log.error("Caught exception when clickByXPath", ex);
             }
-        } while (maxAttempts >= 0 && !isSuccess);
+        } while (numOfRetries > 0 && !isSuccess);
         return isSuccess;
     }
 
@@ -139,10 +140,10 @@ public class SeleniumServiceImpl implements SeleniumService {
     }
 
     @Override
-    public boolean waitForPageReady(WebDriver driver, Duration timeout, Integer maxAttempts, Runnable onError) {
+    public boolean waitForPageReady(WebDriver driver, Duration timeout, Integer numOfRetries, Runnable onError) {
         boolean isSuccess = false;
         do {
-            maxAttempts -= 1;
+            numOfRetries -= 1;
             try {
                 log.info("Start waitForPageReady in {}", timeout);
                 log.info("Current url {}", driver.getCurrentUrl());
@@ -152,19 +153,21 @@ public class SeleniumServiceImpl implements SeleniumService {
                 log.info("End waitForPageReady");
                 isSuccess = true;
             } catch (TimeoutException ex) {
-                log.error("Caught timeout exception -> retry: {}", maxAttempts, ex);
+                log.error("Caught timeout exception when waitForPageReady -> retry: {}", numOfRetries, ex);
                 onError.run();
                 ThreadHelper.waitInMs(500);
+            } catch (Exception ex) {
+                log.error("Caught exception when waitForPageReady", ex);
             }
-        } while (maxAttempts >= 0 && !isSuccess);
+        } while (numOfRetries > 0 && !isSuccess);
         return isSuccess;
     }
 
     @Override
-    public boolean switchToFrame(WebDriver driver, String xPath, Duration timeout, Integer maxAttempts) {
+    public boolean switchToFrame(WebDriver driver, String xPath, Duration timeout, Integer numOfRetries) {
         boolean isSuccess = false;
         do {
-            maxAttempts -= 1;
+            numOfRetries -= 1;
             try {
                 log.info("Start switchToFrame with {} in {}", xPath, timeout);
                 var wait = new WebDriverWait(driver, timeout);
@@ -172,11 +175,23 @@ public class SeleniumServiceImpl implements SeleniumService {
                 log.info("End switchToFrame");
                 isSuccess = true;
             } catch (TimeoutException ex) {
-                log.error("Caught timeout exception -> retry: {}", maxAttempts, ex);
+                log.error("Caught timeout exception when switchToFrame -> retry: {}", numOfRetries, ex);
                 driver.navigate().refresh();
                 ThreadHelper.waitInMs(500);
+            } catch (Exception ex) {
+                log.error("Caught exception when switchToFrame", ex);
             }
-        } while (maxAttempts >= 0 && !isSuccess);
+        } while (numOfRetries > 0 && !isSuccess);
         return isSuccess;
+    }
+
+    @Override
+    public boolean search(WebDriver driver, String xPath, Duration timeout, String searchText) {
+        var wait = new WebDriverWait(driver, timeout);
+        var element = wait.until(ExpectedConditions.visibilityOfElementLocated(By.xpath(xPath)));
+        element.sendKeys(searchText);
+        ThreadHelper.waitInMs(100);
+        element.sendKeys(Keys.ENTER);
+        return true;
     }
 }
