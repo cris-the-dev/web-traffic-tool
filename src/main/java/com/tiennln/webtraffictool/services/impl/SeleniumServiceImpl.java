@@ -37,12 +37,7 @@ public class SeleniumServiceImpl implements SeleniumService {
         driverManager.browserVersion("123").setup();
 
         // Get proxy
-        var proxyServer = proxyService.getProxy();
-
-        // Set proxy
-        var proxy = new Proxy();
-        proxy.setHttpProxy(proxyServer);
-        proxy.setSslProxy(proxyServer);
+        var proxy = proxyService.getProxy();
 
         // Set options
         var options = new ChromeOptions();
