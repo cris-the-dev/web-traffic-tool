@@ -47,10 +47,7 @@ public class ProcessHandler {
         var baseWindow = driver.getWindowHandle();
 
         // Wait for page loaded
-        var execResult = seleniumService.waitForPageReady(driver, Duration.ofSeconds(15), 2, () -> driver.get(SEARCH_URL));
-        if (!execResult) {
-            return;
-        }
+        seleniumService.waitForPageReady(driver, Duration.ofSeconds(15), 2, () -> driver.get(SEARCH_URL));
 
         // Do search
         doSearchByGoogle(driver);
