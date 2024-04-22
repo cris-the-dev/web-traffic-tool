@@ -9,6 +9,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.openqa.selenium.By;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.WebDriver;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
 import java.awt.*;
@@ -23,7 +24,7 @@ public class ProcessHandler {
 
     private SeleniumService seleniumService;
 
-    private GeoNodeService proxyService;
+    private ThreadPoolHandler threadPoolHandler;
 
     private static final String SEARCH_URL = "https://google.com";
 
@@ -196,5 +197,26 @@ public class ProcessHandler {
             iFrameSize = iFrames.size();
         }
         log.info("End clickAllowNotification");
+    }
+
+    @Async
+    public void startWithThreadPool() {
+        ThreadPoolHandler.isTerminated = false;
+        do {
+            threadPoolHandler.start(() -> {
+                System.out.println("Total pool size: " + threadPoolHandler.getPoolSize());
+                System.out.println("Processing thread: " + threadPoolHandler.getProcessingThread());
+                System.out.println("Waiting thread: " + threadPoolHandler.getWaitingThread());
+                threadPoolHandler.start(this::start);
+            });
+        } while (!ThreadPoolHandler.isTerminated);
+    }
+
+    public void terminateThreadPool() {
+        ThreadPoolHandler.isTerminated = true;
+    }
+
+    public Integer getProcessedThread() {
+        return threadPoolHandler.getProcessedThread();
     }
 }
