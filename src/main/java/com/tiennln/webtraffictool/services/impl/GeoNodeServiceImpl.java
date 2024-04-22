@@ -15,12 +15,31 @@ public class GeoNodeServiceImpl implements GeoNodeService {
     @Override
     public Proxy getProxy() {
         var proxyServer = PROXY_HOST + ":" + PROXY_PORT;
-        var proxyAuth = PROXY_USERNAME + ":" + PROXY_PWD;
 
         var proxy = new Proxy();
         proxy.setHttpProxy(proxyServer);
         proxy.setSslProxy(proxyServer);
 
         return proxy;
+    }
+
+    @Override
+    public String getProxyPort() {
+        return PROXY_PORT;
+    }
+
+    @Override
+    public String getProxyHost() {
+        return PROXY_HOST;
+    }
+
+    @Override
+    public String getProxyUsername() {
+        return PROXY_USERNAME;
+    }
+
+    @Override
+    public String getProxyPassword() {
+        return PROXY_PWD;
     }
 }
