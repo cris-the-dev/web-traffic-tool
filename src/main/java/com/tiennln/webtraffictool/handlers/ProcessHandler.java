@@ -82,6 +82,11 @@ public class ProcessHandler {
     private void doSearchByGoogle(WebDriver driver) {
         log.info("Start doSearchByGoogle");
 
+        if (driver.getCurrentUrl().startsWith("https://www.google.com/sorry/index")) {
+            driver.get(TARGET_URL);
+            return;
+        }
+
         seleniumService.clickByXPath(driver, "//button[contains(., 'Avvis alle')]", Duration.ofSeconds(2), 0);
 
         var result = seleniumService.search(driver, "/html/body/div[1]/div[3]/form/div[1]/div[1]/div[1]/div/div[2]/textarea", Duration.ofSeconds(2), "blast1995");
