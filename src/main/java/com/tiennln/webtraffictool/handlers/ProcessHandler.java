@@ -26,7 +26,7 @@ public class ProcessHandler {
 
     private ThreadPoolHandler threadPoolHandler;
 
-    private static final String SEARCH_URL = "https://google.com";
+    private static final String SEARCH_URL = "https://www.google.com/search?q=blast1995&oq=blast1995&sourceid=chrome&ie=UTF-8";
 
     private static final String TARGET_URL = "https://blast1995.com/";
 
@@ -88,14 +88,9 @@ public class ProcessHandler {
         }
 
         seleniumService.clickByXPath(driver, "//button[contains(., 'Avvis alle')]", Duration.ofSeconds(2), 0);
-        seleniumService.clickByXPath(driver, "/html/body/div[2]/div[3]/div[3]/span/div/div/div/div[3]/div[1]/button[2]/div", Duration.ofSeconds(2), 0);
+        seleniumService.clickByXPath(driver, "/html/body/div[2]/div[3]/span/div/div/div/div[3]/div[1]/button[2]/div", Duration.ofSeconds(2), 0);
 
-        var result = seleniumService.search(driver, "/html/body/div[1]/div[3]/form/div[1]/div[1]/div[1]/div/div[2]/textarea", Duration.ofSeconds(2), "blast1995");
-        if (!result) {
-            driver.get(TARGET_URL);
-            return;
-        }
-        result = seleniumService.waitForPageReady(driver, Duration.ofSeconds(15), 1, () -> driver.get(TARGET_URL));
+        var result = seleniumService.waitForPageReady(driver, Duration.ofSeconds(15), 1, () -> driver.get(TARGET_URL));
         if (result && driver.getCurrentUrl().contains("google")) {
             result = seleniumService.clickByXPath(driver, "//*[@href='" + TARGET_URL + "']", Duration.ofMillis(1000), 2);
             if (result) {
