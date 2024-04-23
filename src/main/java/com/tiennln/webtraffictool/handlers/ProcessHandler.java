@@ -213,7 +213,7 @@ public class ProcessHandler {
                 log.info("Total pool size: " + threadPoolHandler.getPoolSize());
                 log.info("Processing thread: " + threadPoolHandler.getProcessingThread());
                 log.info("Waiting thread: " + threadPoolHandler.getWaitingThread());
-                threadPoolHandler.start(this::start);
+                this.start();
             });
         } while (!ThreadPoolHandler.isTerminated);
     }
