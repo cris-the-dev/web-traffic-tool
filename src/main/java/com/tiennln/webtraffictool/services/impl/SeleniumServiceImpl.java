@@ -12,7 +12,6 @@ import org.openqa.selenium.By;
 import org.openqa.selenium.JavascriptExecutor;
 import org.openqa.selenium.Keys;
 import org.openqa.selenium.PageLoadStrategy;
-import org.openqa.selenium.Proxy;
 import org.openqa.selenium.TimeoutException;
 import org.openqa.selenium.WebDriver;
 import org.openqa.selenium.chrome.ChromeDriver;
@@ -23,10 +22,8 @@ import org.springframework.stereotype.Service;
 
 import java.io.File;
 import java.io.FileOutputStream;
-import java.nio.file.Files;
 import java.time.Duration;
 import java.util.HashMap;
-import java.util.List;
 import java.util.stream.Stream;
 import java.util.zip.ZipOutputStream;
 
@@ -49,7 +46,7 @@ public class SeleniumServiceImpl implements SeleniumService {
 
         // Set options
         var options = new ChromeOptions();
-        options.addArguments("--remote-allow-origins=*");
+        options.addArguments("--remote-allow-origins=*", "--headless=new");
         options.setBrowserVersion(driverManagerCfg.getChromeVersion());
         options.setPageLoadStrategy(PageLoadStrategy.EAGER);
         options.setCapability("proxy", proxy);
@@ -213,6 +210,10 @@ public class SeleniumServiceImpl implements SeleniumService {
         if (Stream.of(host, port, username, password).anyMatch(StringUtils::isEmpty)) {
             return null;
         }
+        var file = new File("proxy_auth_plugin.zip");
+        if (file.exists()) {
+            return file;
+        }
         var manifestJson = """
                 {
                   "version": "1.0.0",
@@ -268,7 +269,7 @@ public class SeleniumServiceImpl implements SeleniumService {
             FileHelper.createFile("manifest.json", manifestJson);
             FileHelper.createFile("background.js", backgroundJs);
 
-            var file = new File("proxy_auth_plugin.zip");
+
             FileHelper.writeToZipFile("manifest.json", zipOS);
             FileHelper.writeToZipFile("background.js", zipOS);
             zipOS.close();

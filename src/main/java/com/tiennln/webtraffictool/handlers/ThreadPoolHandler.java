@@ -4,11 +4,13 @@ import com.tiennln.webtraffictool.configurations.AppConfig;
 import jakarta.annotation.PostConstruct;
 import lombok.AllArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.web.context.annotation.ApplicationScope;
 
 import java.util.concurrent.Executors;
 import java.util.concurrent.ThreadPoolExecutor;
 
 @Component
+@ApplicationScope
 @AllArgsConstructor
 public class ThreadPoolHandler {
 

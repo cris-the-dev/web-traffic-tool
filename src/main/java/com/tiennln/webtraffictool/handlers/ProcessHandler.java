@@ -38,7 +38,7 @@ public class ProcessHandler {
         ThreadHelper.setTimeout(() -> {
             log.warn("--- Ending by timeout");
             driver.quit();
-        }, 180L * 1000); // 90s
+        }, 210L * 1000); // 210s
 
         // Open base url
         seleniumService.openBrowser(driver, SEARCH_URL);
@@ -47,10 +47,7 @@ public class ProcessHandler {
         var baseWindow = driver.getWindowHandle();
 
         // Wait for page loaded
-        var execResult = seleniumService.waitForPageReady(driver, Duration.ofSeconds(15), 2, () -> driver.get(SEARCH_URL));
-        if (!execResult) {
-            return;
-        }
+        seleniumService.waitForPageReady(driver, Duration.ofSeconds(15), 2, () -> driver.get(SEARCH_URL));
 
         // Do search
         doSearchByGoogle(driver);
@@ -84,6 +81,15 @@ public class ProcessHandler {
 
     private void doSearchByGoogle(WebDriver driver) {
         log.info("Start doSearchByGoogle");
+
+        if (driver.getCurrentUrl().startsWith("https://www.google.com/sorry/index")) {
+            driver.get(TARGET_URL);
+            return;
+        }
+
+        seleniumService.clickByXPath(driver, "//button[contains(., 'Avvis alle')]", Duration.ofSeconds(2), 0);
+        seleniumService.clickByXPath(driver, "/html/body/div[2]/div[3]/div[3]/span/div/div/div/div[3]/div[1]/button[2]/div", Duration.ofSeconds(2), 0);
+
         var result = seleniumService.search(driver, "/html/body/div[1]/div[3]/form/div[1]/div[1]/div[1]/div/div[2]/textarea", Duration.ofSeconds(2), "blast1995");
         if (!result) {
             driver.get(TARGET_URL);
@@ -204,9 +210,9 @@ public class ProcessHandler {
         ThreadPoolHandler.isTerminated = false;
         do {
             threadPoolHandler.start(() -> {
-                System.out.println("Total pool size: " + threadPoolHandler.getPoolSize());
-                System.out.println("Processing thread: " + threadPoolHandler.getProcessingThread());
-                System.out.println("Waiting thread: " + threadPoolHandler.getWaitingThread());
+                log.info("Total pool size: " + threadPoolHandler.getPoolSize());
+                log.info("Processing thread: " + threadPoolHandler.getProcessingThread());
+                log.info("Waiting thread: " + threadPoolHandler.getWaitingThread());
                 threadPoolHandler.start(this::start);
             });
         } while (!ThreadPoolHandler.isTerminated);
