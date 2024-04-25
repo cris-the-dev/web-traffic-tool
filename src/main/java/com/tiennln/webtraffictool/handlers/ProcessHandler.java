@@ -2,7 +2,9 @@ package com.tiennln.webtraffictool.handlers;
 
 import com.tiennln.webtraffictool.helpers.ThreadHelper;
 import com.tiennln.webtraffictool.services.GeoNodeService;
+import com.tiennln.webtraffictool.services.ProxyService;
 import com.tiennln.webtraffictool.services.SeleniumService;
+import com.tiennln.webtraffictool.services.impl.ProxyServiceImpl;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
@@ -16,6 +18,7 @@ import java.awt.*;
 import java.awt.datatransfer.StringSelection;
 import java.awt.event.KeyEvent;
 import java.time.Duration;
+import java.util.Map;
 
 @Component
 @AllArgsConstructor
@@ -25,6 +28,7 @@ public class ProcessHandler {
     private SeleniumService seleniumService;
 
     private ThreadPoolHandler threadPoolHandler;
+    private ProxyService proxyService;
 
     private static final String SEARCH_URL = "https://google.com";
 
@@ -32,51 +36,67 @@ public class ProcessHandler {
 
     public void start() {
         log.info("--- Start new process");
-        // Get driver
-        var driver = seleniumService.getDriver();
 
-        ThreadHelper.setTimeout(() -> {
-            log.warn("--- Ending by timeout");
-            driver.quit();
-        }, 210L * 1000); // 210s
+        // Get proxy
+        var proxy = proxyService.getProxy();
+        System.out.println("Proxy: " + proxy);
 
-        // Open base url
-        seleniumService.openBrowser(driver, SEARCH_URL);
+        if (proxy != null) {
+            // Get driver
+            var driver = seleniumService.getDriver(proxy);
 
-        // Get base window
-        var baseWindow = driver.getWindowHandle();
+            var startTime = 0L;
+            if (driver != null) {
+                startTime = System.currentTimeMillis();
+                ThreadHelper.setTimeout(() -> {
+                    log.warn("--- Ending by timeout");
+                    driver.quit();
+                }, 250L * 1000); // 250s
 
-        // Wait for page loaded
-        seleniumService.waitForPageReady(driver, Duration.ofSeconds(15), 2, () -> driver.get(SEARCH_URL));
+                // Open base url
+                seleniumService.openBrowser(driver, SEARCH_URL);
 
-        // Do search
-        doSearchByGoogle(driver);
+                // Get base window
+                var baseWindow = driver.getWindowHandle();
 
-        // Should wait to keep impression
-        ThreadHelper.waitInMs(2000);
+                // Wait for page loaded
+                seleniumService.waitForPageReady(driver, Duration.ofSeconds(15), 2, () -> driver.get(SEARCH_URL));
 
-        // Click ads
-        clickTheFirstAds(driver, baseWindow);
+                // Do search
+                doSearchByGoogle(driver);
 
-        // Switch to base window
-        driver.close();
-        driver.switchTo().window(baseWindow);
+                // Should wait to keep impression
+                ThreadHelper.waitInMs(5000);
 
-        // Check if any remaining ads -> click
-        clickRemainingAds(driver, baseWindow);
+                // Click ads
+                clickTheFirstAds(driver, baseWindow);
 
-        // Click allow notification if any
-        clickAllowNotification(driver, baseWindow);
+                // Switch to base window
+                driver.close();
+                driver.switchTo().window(baseWindow);
 
-        // Switch to base window
-        driver.switchTo().window(baseWindow);
+                // Check if any remaining ads -> click
+                clickRemainingAds(driver, baseWindow);
 
-        ThreadHelper.waitInMs(5000);
+                // Click allow notification if any
+                clickAllowNotification(driver, baseWindow);
 
-        log.info("--- Ending happy");
+                // Switch to base window
+                driver.switchTo().window(baseWindow);
 
-        // Close
-        driver.quit();
+                ThreadHelper.waitInMs(5000);
+
+                log.info("--- Ending happy");
+
+                // Close
+                driver.quit();
+            }
+
+            if (startTime > 0L && startTime < (305 * 1000)) { // Wait for 305s before ending
+                ThreadHelper.waitInMs((305 * 1000) - startTime);
+                proxyService.releasePort(proxy.getSslProxy().split(":")[1]);
+            }
+        }
     }
 
     private void doSearchByGoogle(WebDriver driver) {
@@ -224,5 +244,9 @@ public class ProcessHandler {
 
     public Integer getProcessedThread() {
         return threadPoolHandler.getProcessedThread();
+    }
+
+    public Map<String, Boolean> getPortStatus() {
+        return ProxyServiceImpl.PORT_MAP;
     }
 }

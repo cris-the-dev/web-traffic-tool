@@ -13,4 +13,7 @@ public class AppConfig {
 
     @Value("${thread.pool.max.queue.size}")
     private Integer maxQueueSize;
+
+    @Value("${geonode.proxy.type}")
+    private String proxyType;
 }

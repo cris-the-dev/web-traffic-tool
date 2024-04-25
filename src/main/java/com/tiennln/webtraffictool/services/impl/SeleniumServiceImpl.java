@@ -8,12 +8,7 @@ import io.github.bonigarcia.wdm.WebDriverManager;
 import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
-import org.openqa.selenium.By;
-import org.openqa.selenium.JavascriptExecutor;
-import org.openqa.selenium.Keys;
-import org.openqa.selenium.PageLoadStrategy;
-import org.openqa.selenium.TimeoutException;
-import org.openqa.selenium.WebDriver;
+import org.openqa.selenium.*;
 import org.openqa.selenium.chrome.ChromeDriver;
 import org.openqa.selenium.chrome.ChromeOptions;
 import org.openqa.selenium.support.ui.ExpectedConditions;
@@ -34,15 +29,13 @@ public class SeleniumServiceImpl implements SeleniumService {
 
     private ProxyService proxyService;
 
-    public WebDriver getDriver() {
+    public WebDriver getDriver(Proxy proxy) {
+
         // Download driver
         var driverManager = WebDriverManager.chromedriver();
         var driverManagerCfg = driverManager.config();
         driverManagerCfg.setCachePath("./driver");
         driverManager.browserVersion("123").setup();
-
-        // Get proxy
-        var proxy = proxyService.getProxy();
 
         // Set options
         var options = new ChromeOptions();
@@ -59,8 +52,8 @@ public class SeleniumServiceImpl implements SeleniumService {
 
         // Set bypass proxy file
         var bypassProxyFile = getBypassProxyExtensionFile(
-                proxyService.getProxyHost(),
-                proxyService.getProxyPort(),
+                proxyService.getProxyHost(proxy),
+                proxyService.getProxyPort(proxy),
                 proxyService.getProxyUsername(),
                 proxyService.getProxyPassword()
         );
