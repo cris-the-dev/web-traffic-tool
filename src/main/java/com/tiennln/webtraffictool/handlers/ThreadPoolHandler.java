@@ -3,6 +3,7 @@ package com.tiennln.webtraffictool.handlers;
 import com.tiennln.webtraffictool.configurations.AppConfig;
 import jakarta.annotation.PostConstruct;
 import lombok.AllArgsConstructor;
+import lombok.SneakyThrows;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.annotation.ApplicationScope;
 
@@ -25,9 +26,11 @@ public class ThreadPoolHandler {
         executor = (ThreadPoolExecutor) Executors.newFixedThreadPool(appConfig.getPoolSize());
     }
 
+    @SneakyThrows
     public void start(Runnable task) {
         if (executor.getQueue().size() < appConfig.getMaxQueueSize()) {
             totalThread += 1;
+            Thread.sleep(1000);
             executor.submit(task);
         }
     }

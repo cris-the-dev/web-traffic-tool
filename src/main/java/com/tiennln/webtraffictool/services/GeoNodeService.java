@@ -4,8 +4,7 @@ import org.openqa.selenium.Proxy;
 
 public interface GeoNodeService {
     Proxy getProxy();
-    String getProxyPort();
-    String getProxyHost();
+    Proxy getProxy(String port);
     String getProxyUsername();
     String getProxyPassword();
 }

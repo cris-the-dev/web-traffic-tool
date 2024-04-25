@@ -1,13 +1,14 @@
 package com.tiennln.webtraffictool.services;
 
 import org.openqa.selenium.JavascriptExecutor;
+import org.openqa.selenium.Proxy;
 import org.openqa.selenium.WebDriver;
 
 import java.time.Duration;
 
 public interface SeleniumService {
 
-    WebDriver getDriver();
+    WebDriver getDriver(Proxy proxy);
 
     void openBrowser(WebDriver driver, String url);
 

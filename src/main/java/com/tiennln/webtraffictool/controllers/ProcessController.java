@@ -7,6 +7,8 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping(value = "/api/v1/process")
 @AllArgsConstructor
@@ -27,5 +29,10 @@ public class ProcessController {
     @GetMapping("/processed-thread")
     Integer getProcessedThread() {
         return handler.getProcessedThread();
+    }
+
+    @GetMapping("/port-status")
+    Map<String, Boolean> getPortStatus() {
+        return handler.getPortStatus();
     }
 }
