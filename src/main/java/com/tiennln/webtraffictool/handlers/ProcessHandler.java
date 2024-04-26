@@ -50,69 +50,73 @@ public class ProcessHandler {
     }
 
     private void start(Proxy proxy, boolean shouldRelease) {
-        if (proxy != null) {
-            var port = proxyService.getProxyPort(proxy);
-            // Get driver
-            var driver = seleniumService.getDriver(proxy);
+        try {
+            if (proxy != null) {
+                var port = proxyService.getProxyPort(proxy);
+                // Get driver
+                var driver = seleniumService.getDriver(proxy);
 
-            var startTime = 0L;
-            if (driver != null) {
-                startTime = System.currentTimeMillis();
-                ThreadHelper.setTimeout(() -> {
-                    log.warn("--- Ending by timeout, {}", port);
+                var startTime = 0L;
+                if (driver != null) {
+                    startTime = System.currentTimeMillis();
+                    ThreadHelper.setTimeout(() -> {
+                        log.warn("--- Ending by timeout, {}", port);
+                        driver.quit();
+                    }, 250L * 1000); // 250s
+
+                    // Open base url
+                    seleniumService.openBrowser(driver, SEARCH_URL);
+
+                    // Get base window
+                    var baseWindow = driver.getWindowHandle();
+
+                    // Wait for page loaded
+                    seleniumService.waitForPageReady(driver, Duration.ofSeconds(15), 2, () -> driver.get(SEARCH_URL));
+
+                    // Do search
+                    doSearchByGoogle(driver);
+
+                    // Should wait to keep impression
+                    ThreadHelper.waitInMs(5000);
+
+                    // Click ads
+                    clickTheFirstAds(driver, baseWindow);
+
+                    // Switch to base window
+                    driver.close();
+                    driver.switchTo().window(baseWindow);
+
+                    // Check if any remaining ads -> click
+                    clickRemainingAds(driver, baseWindow);
+
+                    // Click allow notification if any
+                    clickAllowNotification(driver, baseWindow);
+
+                    // Switch to base window
+                    driver.switchTo().window(baseWindow);
+
+                    ThreadHelper.waitInMs(5000);
+
+                    log.info("--- Ending happy {}", port);
+
+                    // Close
                     driver.quit();
-                }, 250L * 1000); // 250s
+                }
 
-                // Open base url
-                seleniumService.openBrowser(driver, SEARCH_URL);
+                var endTime = System.currentTimeMillis();
 
-                // Get base window
-                var baseWindow = driver.getWindowHandle();
+                var diffMillis = endTime - startTime;
 
-                // Wait for page loaded
-                seleniumService.waitForPageReady(driver, Duration.ofSeconds(15), 2, () -> driver.get(SEARCH_URL));
+                if (diffMillis > 0L && diffMillis < (305 * 1000)) { // Wait for 305s before ending
+                    ThreadHelper.waitInMs((305 * 1000) - diffMillis);
+                }
 
-                // Do search
-                doSearchByGoogle(driver);
-
-                // Should wait to keep impression
-                ThreadHelper.waitInMs(5000);
-
-                // Click ads
-                clickTheFirstAds(driver, baseWindow);
-
-                // Switch to base window
-                driver.close();
-                driver.switchTo().window(baseWindow);
-
-                // Check if any remaining ads -> click
-                clickRemainingAds(driver, baseWindow);
-
-                // Click allow notification if any
-                clickAllowNotification(driver, baseWindow);
-
-                // Switch to base window
-                driver.switchTo().window(baseWindow);
-
-                ThreadHelper.waitInMs(5000);
-
-                log.info("--- Ending happy {}", port);
-
-                // Close
-                driver.quit();
+                if (shouldRelease) {
+                    proxyService.releasePort(proxy.getSslProxy().split(":")[1]);
+                }
             }
-
-            var endTime = System.currentTimeMillis();
-
-            var diffMillis = endTime - startTime;
-
-            if (diffMillis > 0L && diffMillis < (305 * 1000)) { // Wait for 305s before ending
-                ThreadHelper.waitInMs((305 * 1000) - diffMillis);
-            }
-
-            if (shouldRelease) {
-                proxyService.releasePort(proxy.getSslProxy().split(":")[1]);
-            }
+        } catch (Exception ex) {
+            log.error("Error while processing, {}", ex.getMessage());
         }
     }
 
@@ -124,10 +128,10 @@ public class ProcessHandler {
             return;
         }
 
-        seleniumService.clickByXPath(driver, "//button[contains(., 'Avvis alle')]", Duration.ofSeconds(2), 0);
+        // seleniumService.clickByXPath(driver, "//button[contains(., 'Avvis alle')]", Duration.ofSeconds(2), 0);
         seleniumService.clickByXPath(driver, "/html/body/div[2]/div[3]/div[3]/span/div/div/div/div[3]/div[1]/button[2]/div", Duration.ofSeconds(2), 0);
 
-        var result = seleniumService.search(driver, "/html/body/div[1]/div[3]/form/div[1]/div[1]/div[1]/div/div[2]/textarea", Duration.ofSeconds(2), "blast1995");
+        var result = seleniumService.search(driver, "/html/body/div[1]/div[3]/form/div[1]/div[1]/div[1]/div/div[2]/textarea", Duration.ofSeconds(2), "blast1995.com");
         if (!result) {
             driver.get(TARGET_URL);
             return;
@@ -224,7 +228,7 @@ public class ProcessHandler {
                         // Should wait to keep impression
                         ThreadHelper.waitInMs(5000);
                     }
-                    break;
+                    // break;
                 }
                 ThreadHelper.waitInMs(5000);
                 if (driver.getWindowHandles().size() > 1) {
