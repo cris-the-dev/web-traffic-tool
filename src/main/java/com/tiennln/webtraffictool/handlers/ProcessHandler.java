@@ -50,13 +50,13 @@ public class ProcessHandler {
     }
 
     private void start(Proxy proxy, boolean shouldRelease) {
+        var startTime = 0L;
         try {
             if (proxy != null) {
                 var port = proxyService.getProxyPort(proxy);
                 // Get driver
                 var driver = seleniumService.getDriver(proxy);
 
-                var startTime = 0L;
                 if (driver != null) {
                     startTime = System.currentTimeMillis();
                     ThreadHelper.setTimeout(() -> {
@@ -102,21 +102,18 @@ public class ProcessHandler {
                     // Close
                     driver.quit();
                 }
-
-                var endTime = System.currentTimeMillis();
-
-                var diffMillis = endTime - startTime;
-
-                if (diffMillis > 0L && diffMillis < (305 * 1000)) { // Wait for 305s before ending
-                    ThreadHelper.waitInMs((305 * 1000) - diffMillis);
-                }
-
-                if (shouldRelease) {
-                    proxyService.releasePort(proxy.getSslProxy().split(":")[1]);
-                }
             }
         } catch (Exception ex) {
             log.error("Error while processing, {}", ex.getMessage());
+        } finally {
+            var endTime = System.currentTimeMillis();
+            var diffMillis = endTime - startTime;
+            if (diffMillis > 0L && diffMillis < (305 * 1000)) { // Wait for 305s before ending
+                ThreadHelper.waitInMs((305 * 1000) - diffMillis);
+            }
+            if (shouldRelease && proxy != null) {
+                proxyService.releasePort(proxy.getSslProxy().split(":")[1]);
+            }
         }
     }
 
