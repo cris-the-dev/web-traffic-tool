@@ -1,7 +1,6 @@
 package com.tiennln.webtraffictool.handlers;
 
 import com.tiennln.webtraffictool.helpers.ThreadHelper;
-import com.tiennln.webtraffictool.services.GeoNodeService;
 import com.tiennln.webtraffictool.services.ProxyService;
 import com.tiennln.webtraffictool.services.SeleniumService;
 import com.tiennln.webtraffictool.services.impl.ProxyServiceImpl;
@@ -9,14 +8,11 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openqa.selenium.By;
-import org.openqa.selenium.Keys;
+import org.openqa.selenium.Proxy;
 import org.openqa.selenium.WebDriver;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
-import java.awt.*;
-import java.awt.datatransfer.StringSelection;
-import java.awt.event.KeyEvent;
 import java.time.Duration;
 import java.util.Map;
 
@@ -39,9 +35,23 @@ public class ProcessHandler {
 
         // Get proxy
         var proxy = proxyService.getProxy();
-        System.out.println("Proxy: " + proxy);
+        log.info("Setup proxy: {}", proxy);
 
+        start(proxy, true);
+    }
+
+    public void start(String port) {
+        log.info("--- Start new process, {}", port);
+        // Get proxy
+        var proxy = proxyService.getProxy(port);
+        log.info("Setup proxy: {}", proxy);
+
+        start(proxy, false);
+    }
+
+    private void start(Proxy proxy, boolean shouldRelease) {
         if (proxy != null) {
+            var port = proxyService.getProxyPort(proxy);
             // Get driver
             var driver = seleniumService.getDriver(proxy);
 
@@ -49,7 +59,7 @@ public class ProcessHandler {
             if (driver != null) {
                 startTime = System.currentTimeMillis();
                 ThreadHelper.setTimeout(() -> {
-                    log.warn("--- Ending by timeout");
+                    log.warn("--- Ending by timeout, {}", port);
                     driver.quit();
                 }, 250L * 1000); // 250s
 
@@ -86,17 +96,23 @@ public class ProcessHandler {
 
                 ThreadHelper.waitInMs(5000);
 
-                log.info("--- Ending happy");
+                log.info("--- Ending happy {}", port);
 
                 // Close
                 driver.quit();
             }
 
-            if (startTime > 0L && startTime < (305 * 1000)) { // Wait for 305s before ending
-                ThreadHelper.waitInMs((305 * 1000) - startTime);
+            var endTime = System.currentTimeMillis();
+
+            var diffMillis = endTime - startTime;
+
+            if (diffMillis > 0L && diffMillis < (305 * 1000)) { // Wait for 305s before ending
+                ThreadHelper.waitInMs((305 * 1000) - diffMillis);
             }
 
-            proxyService.releasePort(proxy.getSslProxy().split(":")[1]);
+            if (shouldRelease) {
+                proxyService.releasePort(proxy.getSslProxy().split(":")[1]);
+            }
         }
     }
 
@@ -216,7 +232,7 @@ public class ProcessHandler {
                     driver.close();
                 }
             } catch (Exception ex) {
-                log.error("Error in clickAllowNotification", ex);
+                log.error("Error in clickAllowNotification", ex.getMessage());
             }
             // Switch to base window
             driver.switchTo().window(baseWindow);
@@ -231,9 +247,9 @@ public class ProcessHandler {
         ThreadPoolHandler.isTerminated = false;
         do {
             threadPoolHandler.start(() -> {
-                log.info("Total pool size: " + threadPoolHandler.getPoolSize());
-                log.info("Processing thread: " + threadPoolHandler.getProcessingThread());
-                log.info("Waiting thread: " + threadPoolHandler.getWaitingThread());
+                log.info("Total pool size: {}", threadPoolHandler.getPoolSize());
+                log.info("Processing thread: {}", threadPoolHandler.getProcessingThread());
+                log.info("Waiting thread: {}", threadPoolHandler.getWaitingThread());
                 this.start();
             });
         } while (!ThreadPoolHandler.isTerminated);

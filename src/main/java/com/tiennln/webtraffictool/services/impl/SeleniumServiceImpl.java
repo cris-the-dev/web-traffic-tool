@@ -30,7 +30,6 @@ public class SeleniumServiceImpl implements SeleniumService {
     private ProxyService proxyService;
 
     public WebDriver getDriver(Proxy proxy) {
-
         // Download driver
         var driverManager = WebDriverManager.chromedriver();
         var driverManagerCfg = driverManager.config();
@@ -101,7 +100,7 @@ public class SeleniumServiceImpl implements SeleniumService {
 
                 isSuccess = true;
             } catch (Exception ex) {
-                log.error("clickByXPath failed", ex);
+                log.error("clickByXPath failed, {}", ex.getMessage());
             }
         } while (!isSuccess);
     }
@@ -124,12 +123,12 @@ public class SeleniumServiceImpl implements SeleniumService {
                 isSuccess = true;
             } catch (TimeoutException ex) {
                 if (numOfRetries > 0) {
-                    log.error("Caught timeout exception when clickByXPath-> retry: {}", numOfRetries, ex);
+                    log.error("Caught timeout exception when clickByXPath-> retry: {}, {}", numOfRetries, ex.getMessage());
                     driver.navigate().refresh();
                     ThreadHelper.waitInMs(500);
                 }
             } catch (Exception ex) {
-                log.error("Caught exception when clickByXPath", ex);
+                log.error("Caught exception when clickByXPath, {}", ex.getMessage());
             }
         } while (numOfRetries > 0 && !isSuccess);
         return isSuccess;
@@ -157,11 +156,11 @@ public class SeleniumServiceImpl implements SeleniumService {
                 log.info("End waitForPageReady");
                 isSuccess = true;
             } catch (TimeoutException ex) {
-                log.error("Caught timeout exception when waitForPageReady -> retry: {}", numOfRetries, ex);
+                log.error("Caught timeout exception when waitForPageReady -> retry: {}, {}", numOfRetries, ex.getMessage());
                 onError.run();
                 ThreadHelper.waitInMs(500);
             } catch (Exception ex) {
-                log.error("Caught exception when waitForPageReady", ex);
+                log.error("Caught exception when waitForPageReady, {}", ex.getMessage());
             }
         } while (numOfRetries > 0 && !isSuccess);
         return isSuccess;
@@ -179,11 +178,11 @@ public class SeleniumServiceImpl implements SeleniumService {
                 log.info("End switchToFrame");
                 isSuccess = true;
             } catch (TimeoutException ex) {
-                log.error("Caught timeout exception when switchToFrame -> retry: {}", numOfRetries, ex);
+                log.error("Caught timeout exception when switchToFrame -> retry: {}, {}", numOfRetries, ex.getMessage());
                 driver.navigate().refresh();
                 ThreadHelper.waitInMs(500);
             } catch (Exception ex) {
-                log.error("Caught exception when switchToFrame", ex);
+                log.error("Caught exception when switchToFrame, {}", ex.getMessage());
             }
         } while (numOfRetries > 0 && !isSuccess);
         return isSuccess;
@@ -203,7 +202,8 @@ public class SeleniumServiceImpl implements SeleniumService {
         if (Stream.of(host, port, username, password).anyMatch(StringUtils::isEmpty)) {
             return null;
         }
-        var file = new File("proxy_auth_plugin.zip");
+        var fileName = "proxy_auth_plugin_port_" + port + ".zip";
+        var file = new File(fileName);
         if (file.exists()) {
             return file;
         }
@@ -256,20 +256,22 @@ public class SeleniumServiceImpl implements SeleniumService {
                 """.trim(), host, port, username, password);
 
         try {
-            var fos = new FileOutputStream("proxy_auth_plugin.zip");
+            var fos = new FileOutputStream(fileName);
             var zipOS = new ZipOutputStream(fos);
 
-            FileHelper.createFile("manifest.json", manifestJson);
-            FileHelper.createFile("background.js", backgroundJs);
+            var manifestFile = "manifest_" + port + ".json";
+            var backgroundFile = "background_" + port + ".js";
+            FileHelper.createFile(manifestFile, manifestJson);
+            FileHelper.createFile(backgroundFile, backgroundJs);
 
 
-            FileHelper.writeToZipFile("manifest.json", zipOS);
-            FileHelper.writeToZipFile("background.js", zipOS);
+            FileHelper.writeToZipFile(manifestFile, "manifest.json", zipOS);
+            FileHelper.writeToZipFile(backgroundFile, "background.js", zipOS);
             zipOS.close();
             fos.close();
             return file;
         } catch (Exception ex) {
-            log.error("Caught error in getBypassProxyExtensionFile", ex);
+            log.error("Caught error in getBypassProxyExtensionFile, {}", ex.getMessage());
         }
         return null;
     }
