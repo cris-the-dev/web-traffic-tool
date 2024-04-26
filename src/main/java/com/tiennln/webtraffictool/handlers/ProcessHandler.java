@@ -94,8 +94,9 @@ public class ProcessHandler {
 
             if (startTime > 0L && startTime < (305 * 1000)) { // Wait for 305s before ending
                 ThreadHelper.waitInMs((305 * 1000) - startTime);
-                proxyService.releasePort(proxy.getSslProxy().split(":")[1]);
             }
+
+            proxyService.releasePort(proxy.getSslProxy().split(":")[1]);
         }
     }
 
