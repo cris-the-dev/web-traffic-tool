@@ -1,7 +1,6 @@
 package com.tiennln.webtraffictool.handlers;
 
 import com.tiennln.webtraffictool.helpers.ThreadHelper;
-import com.tiennln.webtraffictool.services.GeoNodeService;
 import com.tiennln.webtraffictool.services.ProxyService;
 import com.tiennln.webtraffictool.services.SeleniumService;
 import com.tiennln.webtraffictool.services.impl.ProxyServiceImpl;
@@ -9,14 +8,11 @@ import lombok.AllArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openqa.selenium.By;
-import org.openqa.selenium.Keys;
+import org.openqa.selenium.Proxy;
 import org.openqa.selenium.WebDriver;
 import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Component;
 
-import java.awt.*;
-import java.awt.datatransfer.StringSelection;
-import java.awt.event.KeyEvent;
 import java.time.Duration;
 import java.util.Map;
 
@@ -39,64 +35,85 @@ public class ProcessHandler {
 
         // Get proxy
         var proxy = proxyService.getProxy();
-        System.out.println("Proxy: " + proxy);
+        log.info("Setup proxy: {}", proxy);
 
-        if (proxy != null) {
-            // Get driver
-            var driver = seleniumService.getDriver(proxy);
+        start(proxy, true);
+    }
 
-            var startTime = 0L;
-            if (driver != null) {
-                startTime = System.currentTimeMillis();
-                ThreadHelper.setTimeout(() -> {
-                    log.warn("--- Ending by timeout");
+    public void start(String port) {
+        log.info("--- Start new process, {}", port);
+        // Get proxy
+        var proxy = proxyService.getProxy(port);
+        log.info("Setup proxy: {}", proxy);
+
+        start(proxy, false);
+    }
+
+    private void start(Proxy proxy, boolean shouldRelease) {
+        var startTime = 0L;
+        try {
+            if (proxy != null) {
+                var port = proxyService.getProxyPort(proxy);
+                // Get driver
+                var driver = seleniumService.getDriver(proxy);
+
+                if (driver != null) {
+                    startTime = System.currentTimeMillis();
+                    ThreadHelper.setTimeout(() -> {
+                        log.warn("--- Ending by timeout, {}", port);
+                        driver.quit();
+                    }, 250L * 1000); // 250s
+
+                    // Open base url
+                    seleniumService.openBrowser(driver, SEARCH_URL);
+
+                    // Get base window
+                    var baseWindow = driver.getWindowHandle();
+
+                    // Wait for page loaded
+                    seleniumService.waitForPageReady(driver, Duration.ofSeconds(15), 2, () -> driver.get(SEARCH_URL));
+
+                    // Do search
+                    doSearchByGoogle(driver);
+
+                    // Should wait to keep impression
+                    ThreadHelper.waitInMs(5000);
+
+                    // Click ads
+                    clickTheFirstAds(driver, baseWindow);
+
+                    // Switch to base window
+                    driver.close();
+                    driver.switchTo().window(baseWindow);
+
+                    // Check if any remaining ads -> click
+                    clickRemainingAds(driver, baseWindow);
+
+                    // Click allow notification if any
+                    clickAllowNotification(driver, baseWindow);
+
+                    // Switch to base window
+                    driver.switchTo().window(baseWindow);
+
+                    ThreadHelper.waitInMs(5000);
+
+                    log.info("--- Ending happy {}", port);
+
+                    // Close
                     driver.quit();
-                }, 250L * 1000); // 250s
-
-                // Open base url
-                seleniumService.openBrowser(driver, SEARCH_URL);
-
-                // Get base window
-                var baseWindow = driver.getWindowHandle();
-
-                // Wait for page loaded
-                seleniumService.waitForPageReady(driver, Duration.ofSeconds(15), 2, () -> driver.get(SEARCH_URL));
-
-                // Do search
-                doSearchByGoogle(driver);
-
-                // Should wait to keep impression
-                ThreadHelper.waitInMs(5000);
-
-                // Click ads
-                clickTheFirstAds(driver, baseWindow);
-
-                // Switch to base window
-                driver.close();
-                driver.switchTo().window(baseWindow);
-
-                // Check if any remaining ads -> click
-                clickRemainingAds(driver, baseWindow);
-
-                // Click allow notification if any
-                clickAllowNotification(driver, baseWindow);
-
-                // Switch to base window
-                driver.switchTo().window(baseWindow);
-
-                ThreadHelper.waitInMs(5000);
-
-                log.info("--- Ending happy");
-
-                // Close
-                driver.quit();
+                }
             }
-
-            if (startTime > 0L && startTime < (305 * 1000)) { // Wait for 305s before ending
-                ThreadHelper.waitInMs((305 * 1000) - startTime);
+        } catch (Exception ex) {
+            log.error("Error while processing, {}", ex.getMessage());
+        } finally {
+            var endTime = System.currentTimeMillis();
+            var diffMillis = endTime - startTime;
+            if (diffMillis > 0L && diffMillis < (305 * 1000)) { // Wait for 305s before ending
+                ThreadHelper.waitInMs((305 * 1000) - diffMillis);
             }
-
-            proxyService.releasePort(proxy.getSslProxy().split(":")[1]);
+            if (shouldRelease && proxy != null) {
+                proxyService.releasePort(proxy.getSslProxy().split(":")[1]);
+            }
         }
     }
 
@@ -108,10 +125,10 @@ public class ProcessHandler {
             return;
         }
 
-        seleniumService.clickByXPath(driver, "//button[contains(., 'Avvis alle')]", Duration.ofSeconds(2), 0);
+        // seleniumService.clickByXPath(driver, "//button[contains(., 'Avvis alle')]", Duration.ofSeconds(2), 0);
         seleniumService.clickByXPath(driver, "/html/body/div[2]/div[3]/div[3]/span/div/div/div/div[3]/div[1]/button[2]/div", Duration.ofSeconds(2), 0);
 
-        var result = seleniumService.search(driver, "/html/body/div[1]/div[3]/form/div[1]/div[1]/div[1]/div/div[2]/textarea", Duration.ofSeconds(2), "blast1995");
+        var result = seleniumService.search(driver, "/html/body/div[1]/div[3]/form/div[1]/div[1]/div[1]/div/div[2]/textarea", Duration.ofSeconds(2), "blast1995.com");
         if (!result) {
             driver.get(TARGET_URL);
             return;
@@ -208,7 +225,7 @@ public class ProcessHandler {
                         // Should wait to keep impression
                         ThreadHelper.waitInMs(5000);
                     }
-                    break;
+                    // break;
                 }
                 ThreadHelper.waitInMs(5000);
                 if (driver.getWindowHandles().size() > 1) {
@@ -216,7 +233,7 @@ public class ProcessHandler {
                     driver.close();
                 }
             } catch (Exception ex) {
-                log.error("Error in clickAllowNotification", ex);
+                log.error("Error in clickAllowNotification", ex.getMessage());
             }
             // Switch to base window
             driver.switchTo().window(baseWindow);
@@ -231,9 +248,9 @@ public class ProcessHandler {
         ThreadPoolHandler.isTerminated = false;
         do {
             threadPoolHandler.start(() -> {
-                log.info("Total pool size: " + threadPoolHandler.getPoolSize());
-                log.info("Processing thread: " + threadPoolHandler.getProcessingThread());
-                log.info("Waiting thread: " + threadPoolHandler.getWaitingThread());
+                log.info("Total pool size: {}", threadPoolHandler.getPoolSize());
+                log.info("Processing thread: {}", threadPoolHandler.getProcessingThread());
+                log.info("Waiting thread: {}", threadPoolHandler.getWaitingThread());
                 this.start();
             });
         } while (!ThreadPoolHandler.isTerminated);

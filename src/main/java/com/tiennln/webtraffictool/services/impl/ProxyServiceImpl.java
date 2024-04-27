@@ -56,6 +56,11 @@ public class ProxyServiceImpl implements ProxyService {
     }
 
     @Override
+    public Proxy getProxy(String port) {
+        return geoNodeService.getProxy(port);
+    }
+
+    @Override
     public String getProxyPort(Proxy proxy) {
         return proxy.getSslProxy().split(":")[1];
     }

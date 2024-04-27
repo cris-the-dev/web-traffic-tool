@@ -19,10 +19,10 @@ public class FileHelper {
     private FileHelper() {
     }
 
-    public static void writeToZipFile(String path, ZipOutputStream zipStream) throws IOException {
-        var aFile = new File(path);
+    public static void writeToZipFile(String sourcePath, String desPath, ZipOutputStream zipStream) throws IOException {
+        var aFile = new File(sourcePath);
         var fis = new FileInputStream(aFile);
-        var zipEntry = new ZipEntry(path);
+        var zipEntry = new ZipEntry(desPath);
         zipStream.putNextEntry(zipEntry);
         var bytes = new byte[1024];
         int length;

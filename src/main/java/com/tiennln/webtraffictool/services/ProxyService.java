@@ -4,6 +4,7 @@ import org.openqa.selenium.Proxy;
 
 public interface ProxyService {
     Proxy getProxy();
+    Proxy getProxy(String port);
     String getProxyPort(Proxy proxy);
     String getProxyHost(Proxy proxy);
     String getProxyUsername();
